@@ -1,3 +1,5 @@
+
+
 from airflow import DAG
 from airflow.operators import DummyOperator, PythonOperator
 from airflow.hooks.base_hook import BaseHook
@@ -15,10 +17,12 @@ Airflow_snowflake_connection_name = Variable.get('Airflow_snowflake_connection_n
 Airflow_mysql_connection_name = Variable.get('Airflow_mysql_connection_name')
 orchestration_country = Variable.get('orchestration_country')
 
-database_include_patterns = ['prefix*'] #only inlcude databases that start with 'prefix', for multiple format as a list seperated by commas
+database_include_patterns = ['prefix*'] #only inlcude databases that start with "prefix", for multiple format as a list seperated by commas
 
 excluded_databases = Variable.get('excluded_databases')
 
+modified_on_field_name = Variable.get('modified_on_field_name')
+added_on_field_name = Variable.get('added_on_field_name')
 
 ##################################################################
 #Collection Connection attributes from Airflow connections repo
@@ -56,9 +60,10 @@ default_args = {
     
 }
 
-one_dag =  DAG(parent_dag_name, default_args=default_args, schedule_interval='@once') 
+one_dag =  DAG(parent_dag_name, default_args=default_args, schedule_interval='@once') #in production, need to update this to run once daily (add various dags and set variables in Airflow?)
 
-database_list =  functs.get_database_list(trim_by_patterns = database_include_patterns, excluded_databases = excluded_databases)
+
+database_list = functs.get_database_list(mysql_username, mysql_password, mysql_hostname, mysql_port, trim_by_patterns = database_include_patterns, excluded_databases = excluded_databases) 
 
 #start dummy task
 start = DummyOperator(
@@ -85,7 +90,22 @@ create_tables_for_multiple_dbs = PythonOperator(
         },
         dag=one_dag)
 
-    
+
+create_date_references_task_multi_dbs = PythonOperator(
+        task_id='load_cdc_date_field_references_mulit_dbs',
+        python_callable=functs.load_cdc_date_field_references_multi_dbs,
+        op_kwargs={
+        'db_list': database_list,
+        'modified_on_field_name': modified_on_field_name,
+        'added_on_field_name': added_on_field_name,
+        'snowflake_username': snowflake_username,
+        'snowflake_password': snowflake_password,
+        'snowflake_account': snowflake_account,
+        'snowflake_database': snowflake_database,
+        },
+        dag=one_dag)
+
+
 #end dummy dag
 end = DummyOperator(
     task_id='end',
@@ -95,5 +115,8 @@ end = DummyOperator(
 
 
 #Setting dependencies, the configuration below creates a parallel task for each table  that migrates the table from mysql to s3, then from s3 to 
+
+
 start  >> create_tables_for_multiple_dbs
-create_tables_for_multiple_dbs >> end
+create_tables_for_multiple_dbs >> create_date_references_task_multi_dbs
+create_date_references_task_multi_dbs >> end
