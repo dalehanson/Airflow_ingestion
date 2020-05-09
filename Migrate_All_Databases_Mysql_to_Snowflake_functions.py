@@ -14,8 +14,107 @@ from os import listdir
 import snowflake.connector
 import re
 
+########################################################################
+#Enviroment Setup functions: Defining functions for replicating database structure in Snowflake from Mysql
+########################################################################
+
+#Creates Schema in Snowflake
+def create_sf_schema(db_name, snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse):
+    sf_con = snowflake_connection(snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse)
+    sql = "CREATE SCHEMA " + db_name
+    try:
+        sf_con.execute(sql)
+    except:
+        print('Schema already created')
+        
+        
+#Creates ddl (sql statement) for creating 1 table in snowflake
+def create_sf_ddl_from_ind_mysql_tbl(db_name, tbl_name, con, exclustion_cols = None):
+    tbl_def = pd.read_sql_query('describe ' + db_name + '.' + tbl_name, con) #getting table definitons
+    if exclustion_cols is not None:
+        tbl_def = tbl_def[~tbl_def.Field.isin(exclustion_cols)] #removing exclustion columns
+        
+    #Setting the snowflake types based on mysql type
+    conditions = [(tbl_def.Type.str.slice(0,3) == 'int') | (tbl_def.Type.str.slice(0,3) == 'tin') | (tbl_def.Type.str.slice(0,3) == 'big') | (tbl_def.Type.str.slice(0,3) == 'med') | (tbl_def.Type.str.slice(0,3) == 'sma'),
+                  (tbl_def.Type.str.slice(0,3) == 'var') | (tbl_def.Type.str.slice(0,3) == 'cha') | (tbl_def.Type.str.slice(0,3) == 'tex') | (tbl_def.Type.str.slice(0,3) == 'lon'),
+                  (tbl_def.Type.str.slice(0,3) == 'dat') | (tbl_def.Type.str.slice(0,3) == 'tim'),
+                  (tbl_def.Type.str.slice(0,3) == 'num') | (tbl_def.Type.str.slice(0,3) == 'dec') | (tbl_def.Type.str.slice(0,3) == 'flo') | (tbl_def.Type.str.slice(0,3) == 'dou'),
+                  (tbl_def.Type.str.slice(0,3) == 'boo')]
+    choices = ['INT', 'VARCHAR(16777216)','TIMESTAMPNTZ(9)', 'NUMBER(38,20)', 'BOOLEAN']
+    
+    tbl_def['sf_type'] = np.select(conditions, choices)
+    tbl_def['col_state'] = tbl_def['Field'] + ' ' + tbl_def['sf_type'] #produces column statement
+    ddl_statement = 'Create  table' + ' ' + db_name + '.' + tbl_name + ' (' + tbl_def['col_state'].str.cat(sep = ' ,' ) + ", ETL_INSERT_TIMESTAMP TIMESTAMP_NTZ(9));"
+    return ddl_statement
 
 
+##Creates all tables from 1 database in mysql enviroment in snowflake using for loop (not in parallel)
+def generate_sf_tables_from_ind_mysql_db(db_name,snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse, mysql_username, mysql_password, mysql_hostname, mysql_port, exclustion_cols = None ):
+    sf_con = snowflake_connection(snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse)
+    mysql_con = mysql_connection(mysql_username, mysql_password, mysql_hostname, mysql_port)
+    
+    tbls_list = get_table_list(db_name, con = mysql_con)
+    if len(tbls_list) == 0:
+        print('No Tables in DB')
+        mysql_con.close()
+        sf_con.close()
+        gc.collect() 
+    else:
+        for tbl_name in tbls_list:
+            tbl_ddl = create_sf_ddl_from_ind_mysql_tbl(db_name, tbl_name, mysql_con)
+            try:
+                sf_con.execute(tbl_ddl)
+            except:
+                print('Table already exists')
+        kill_zombie_connections(mysql_con)
+        mysql_con.close()
+        sf_con.close()
+        gc.collect() 
+
+
+###Creates all tables for all databases in mysql enviroment in snowflake using for loop (not in parallel)
+def generate_sf_multiple_db_tables(db_list, snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse,mysql_username, mysql_password, mysql_hostname, mysql_port):
+    for db_name in db_list:
+        create_sf_schema(db_name, snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse)
+        generate_sf_tables_from_ind_mysql_db(db_name, mysql_username, mysql_password, mysql_hostname, mysql_port)
+    gc.collect() 
+
+
+
+
+def load_cdc_date_field_references(database, snowflake_database, sf_con, modified_on_field_name, added_on_field_name):
+    
+    #Collect all tables for a customer database.  this is used as the base for the date reference
+    sql1 = '''SELECT TABLE_SCHEMA, TABLE_NAME FROM {snowflake_database}.INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = upper({database});'''.format(snowflake_database=snowflake_database, database)
+        
+    tbl_check = pd.read_sql_query(sql1, sf_con)
+    #Collecting all tables with columns names, filtered by only pulling in columns named "added_on" or "modified_on".  this table will likely have duplicates for some tables
+    sql2 = '''Select * from {snowflake_database}.INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA = upper({database})  AND (COLUMN_NAME ILIKE '{modified_on_field_name}%%' OR COLUMN_NAME ILIKE '{added_on_field_name}%%');'''.format(snowflake_database=snowflake_database,database=database,modified_on_field_name=modified_on_field_name, added_on_field_name=added_on_field_name)
+            
+    date_field_ref = pd.read_sql_query(sql2, sf_con)
+    #Collecting tables that have a modified column on it and setting that as the cdc reference
+    date_field_ref_to_insert = date_field_ref[date_field_ref['column_name'] == modified_on_field_name][['table_schema','table_name','column_name']]
+    #Collecting rest of tables that have an added_on column on it and setting that as the cdc reference (excludes tables that have a "modified_on" column)
+    temp_df = pd.merge(date_field_ref[['table_schema','table_name','column_name']], date_field_ref_to_insert, on=['table_name', 'table_schema'], how='left')
+    temp_df = temp_df[temp_df['column_name_y'].isnull() == True][['table_schema','table_name','column_name_x']]
+    temp_df.columns = ['table_schema','table_name','column_name']
+    date_field_ref_to_insert = date_field_ref_to_insert.append(temp_df)
+    #Collecting any tables that do not have a modified or added-on column and setting the cdc to pull all data from table
+    temp_df = pd.merge(tbl_check, date_field_ref_to_insert, on=['table_name', 'table_schema'], how='left')
+    temp_df = temp_df[temp_df['column_name'].isnull() == True]
+    temp_df['column_name'] = 'NONEXISTENT'
+    date_field_ref_to_insert = date_field_ref_to_insert.append(temp_df)
+    #loading data to cdc date column reference table in snowflake
+    date_field_ref_to_insert.columns = ['TABLE_SCHEMA', 'TABLE_NAME', 'CDC_DATE_FIELD']
+    date_field_ref_to_insert.to_sql('DATE_FIELD_REFERENCE', schema = 'A_UTILITY', con = sf_con, if_exists = 'append', index = False)
+    sf_con.close()
+    gc.collect()
+
+def load_cdc_date_field_references_multi_dbs(db_list, modified_on_field_name, added_on_field_name, snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse):
+    for database in db_list:
+        sf_con = snowflake_connection(snowflake_username , snowflake_password, snowflake_account, snowflake_database, snowflake_warehouse)
+        load_cdc_date_field_references(database, sf_con, modified_on_field_name, added_on_field_name)
+    gc.collect()
 
 ########################################################################
 #Defining Audit functions
@@ -707,3 +806,7 @@ def load_audit_records_to_sf(snowflake_username , snowflake_password, snowflake_
     
     sf_con.close()
     gc.collect()
+
+
+
+
