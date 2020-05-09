@@ -41,11 +41,11 @@ Source_System_Name = Variable.get('Source_System_Name')
 
 schedule_interval = Variable.get('Migration_All_Database_Dag_schedule')
 
-database_include_patterns = ['trans*', 'gate*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
+database_include_patterns = ['prefix*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
 excluded_databases = Variable.get('excluded_databases')
 
 #include_tables = Variable.get('Migration_tables_to_include')
-include_tables = 'activity, activity_alert,activity_member, activity_template_schedule, activity_filter, activity_template, activity_type, alert, filter, filter_group, member, member_contact, member_location, activity_travel, activity_form_response, activity_type_config, alert_config, member_location_address, member_filter, member_filter_attribute, string_translation, device, member_device, member_address,member_attribute,member_device, activity_event, member_location_log, activity_manual_intervention, field_option, string_translation, activity_export, user, activity_alert_status, member_device_state, member_location, role, member_role, role_entity_permission, member_type, role_member_type and role_object_permission'
+include_tables = 'table1, table2'
 include_tables = include_tables.split(',')
 include_tables = [x.strip(' ').lower() for x in include_tables]
 
@@ -53,7 +53,7 @@ max_task_time = int(Variable.get('set_task_max_time_minutes')) #set the max runt
 max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
 
 
-migration_audit_folder_path = 'snowflake/migration_audit_files/' #audit log files for temp storage during run, will be loaded to audit table in snowflake when job is completed
+migration_audit_folder_path = 'sfolder/' #audit log files for temp storage during run, will be loaded to audit table in snowflake when job is completed
 
 
 
@@ -64,25 +64,19 @@ migration_audit_folder_path = 'snowflake/migration_audit_files/' #audit log file
 
 
     
-
-sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name) 
+sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name) #
 snowflake_username = sf_con_parm.login 
 snowflake_password = sf_con_parm.password 
 snowflake_account = sf_con_parm.host 
 snowflake_stage_schema = 'A_UTILITY' 
-if orchestration_country.lower() in ['us', 'usa','united states','u.s.','u.s.a']:
-    snowflake_database = "US_RAW"
-if orchestration_country.lower() in ['ca', 'canada','c.a.']:
-    snowflake_database = "CA_RAW"
-if orchestration_country.lower() in ['uk', 'u.k.','united kingdom']:
-    snowflake_database = "UK_RAW"
+#snowflake_warehouse = "XSMALL" 
+snowflake_database = "sf_db"
 
-mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name) #Airflow_mysql_connection_name
+mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name)
 mysql_username = mysql_con.login 
 mysql_password = mysql_con.password 
 mysql_hostname = mysql_con.host
 mysql_port = mysql_con.port
-
 
 
 
@@ -747,7 +741,7 @@ end = DummyOperator(
 
 
 
-database_list =  get_database_list(trim_by_patterns = database_include_patterns, excluded_databases = excluded_databases) #['transaction_creprt']#
+database_list =  get_database_list(trim_by_patterns = database_include_patterns, excluded_databases = excluded_databases) 
 
 
 #Each database is an independant task that will run in parallel4

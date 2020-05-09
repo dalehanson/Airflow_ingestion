@@ -38,14 +38,12 @@ Source_System_Name = Variable.get('Source_System_Name')
 
 parent_dag_name = 'Migrage_all_databases_mysql_to_snowflake'
 
-database_include_patterns = ['trans*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
+database_include_patterns = ['prefix*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
 
-excluded_tables = ['web_service_request_log_part', 'web_service_request_log','web_service_request_attribute' 'event_queue_id', 'ct_config_version_cache', 'event_queue_listener_log', 'web_service_request_log_part_old', 'web_service_request_log_old','web_service_request_attribute_old' 'event_queue_id_old', 'ct_config_version_cache_old', 'event_queue_listener_log_old']  #list of tables we dont want to migrate
+excluded_tables = ['table1','table2']  #list of tables we dont want to migrate
 
 max_task_time = int(Variable.get('set_task_max_time_minutes')) #set the max runtime for a task
 max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
-
-#exclude_cols = ['request_part_buffer','phone_number', 'fax_number', 'mobile_number', 'email_address','push_id', 'request_body', 'address', 'subject', 'body','latitude', 'longitude', 'street','street_1', 'street_2', 'street_3', 'district', 'locality', 'city', 'postal_code', 'subdivision', 'geofences', 'ip_address', 'user_pin', 'caller_id', 'calculation_params','extra', 'name_1', 'name_2', 'name_3']
 
 
 
@@ -53,15 +51,15 @@ max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
 #Collection Connection attributes from Airflow connections repo
 ##################################################################
 
-sf_con_parm = BaseHook.get_connection('snowflake_1') #Airflow_snowflake_connection_name
+sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name) #
 snowflake_username = sf_con_parm.login 
 snowflake_password = sf_con_parm.password 
 snowflake_account = sf_con_parm.host 
 snowflake_stage_schema = 'A_UTILITY' 
 #snowflake_warehouse = "XSMALL" 
-snowflake_database = "US_RAW"
+snowflake_database = "sf_db"
 
-mysql_con = BaseHook.get_connection('mysql_celltrak_1') #Airflow_mysql_connection_name
+mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name)
 mysql_username = mysql_con.login 
 mysql_password = mysql_con.password 
 mysql_hostname = mysql_con.host
@@ -637,8 +635,8 @@ main_dag = DAG(
 )
 
 
-#database_list = get_database_list(database_include_patterns)
-database_list = ['transaction_mhpcc1', 'transaction_mnthhc']
+database_list = get_database_list(database_include_patterns)
+
 
 
 

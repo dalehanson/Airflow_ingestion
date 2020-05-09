@@ -24,17 +24,17 @@ Airflow_mysql_connection_name = Variable.get('Airflow_mysql_connection_name')
 orchestration_country = Variable.get('orchestration_country')
 excluded_databases = Variable.get('excluded_databases')
 
-database_include_patterns = ['trans*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
+database_include_patterns = ['prefix*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
 
 include_tables = Variable.get('Migration_tables_to_include')
 include_tables = include_tables.split(',')
 include_tables = [x.strip(' ').lower() for x in include_tables]
-#['activity', 'activity_alert','activity_member',  'activity_template_schedule', 'activity_filter', 'activity_template', 'activity_type', 'alert', 'filter', 'filter_group', 'member', 'member_contact', 'member_location', 'activity_travel', 'activity_form_response', 'activity_type_config', 'alert_config', 'member_location_address', 'member_filter', 'member_filter_attribute', 'string_translation', 'device', 'member_device', 'member_address','member_attribute','member_device', 'activity_event','member_location_log','activity_manual_intervention','field_option', 'string_translation', 'activity_export']
 
 
 
 
-mysql_con = BaseHook.get_connection('mysql_celltrak_crd')
+
+mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name)
 mysql_username = mysql_con.login 
 mysql_password = mysql_con.password 
 mysql_hostname = mysql_con.host
@@ -45,13 +45,9 @@ snowflake_username = sf_con_parm.login
 snowflake_password = sf_con_parm.password 
 snowflake_account = sf_con_parm.host 
 snowflake_stage_schema = 'A_UTILITY' 
-snowflake_warehouse = "MYSQL_TO_RAW_MIGRATION_XSMALL_1" 
-if orchestration_country.lower() in ['us', 'usa','united states','u.s.','u.s.a']:
-    snowflake_database = "US_RAW"
-if orchestration_country.lower() in ['ca', 'canada','c.a.']:
-    snowflake_database = "CA_RAW"
-if orchestration_country.lower() in ['uk', 'u.k.','united kingdom']:
-    snowflake_database = "UK_RAW"
+snowflake_warehouse = "XSMALL" 
+snowflake_database = "sf_db"
+
 
 
 
@@ -153,8 +149,8 @@ def database_sub_dag(parent_dag_name, database_name, schedule_interval): #'@once
         dag=one_dag
         )
     
-    #tbl_list = get_table_list(database_name, include_tables) #collecting all table names from database database
-    tbl_list = ['member_type', 'member_device_state', 'member_role', 'string_translation', 'activity_event', 'activity_manual_intervention', 'role', 'role_entity_permission', 'field_option', 'member_filter_attribute', 'activity_alert_status', 'member_location_log', 'activity_export', 'activity']
+
+    tbl_list = include_tables
 
     #Setting dependencies, the configuration below creates a parallel task for each table  that migrates the table from mysql to s3, then from s3 to 
     for t in tbl_list:

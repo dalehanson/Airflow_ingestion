@@ -38,14 +38,14 @@ Source_System_Name = Variable.get('Source_System_Name')
 
 parent_dag_name = 'Migrage_all_databases_mysql_to_snowflake'
 
-database_include_patterns = ['trans*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
 
-excluded_tables = ['web_service_request_log_part', 'web_service_request_log','web_service_request_attribute' 'event_queue_id', 'ct_config_version_cache', 'event_queue_listener_log', 'web_service_request_log_part_old', 'web_service_request_log_old','web_service_request_attribute_old' 'event_queue_id_old', 'ct_config_version_cache_old', 'event_queue_listener_log_old']  #list of tables we dont want to migrate
+database_include_patterns = ['prefix*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
+
+excluded_tables = ['table1', 'table2']  #list of tables we dont want to migrate
 
 max_task_time = int(Variable.get('set_task_max_time_minutes')) #set the max runtime for a task
 max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
 
-#exclude_cols = ['request_part_buffer','phone_number', 'fax_number', 'mobile_number', 'email_address','push_id', 'request_body', 'address', 'subject', 'body','latitude', 'longitude', 'street','street_1', 'street_2', 'street_3', 'district', 'locality', 'city', 'postal_code', 'subdivision', 'geofences', 'ip_address', 'user_pin', 'caller_id', 'calculation_params','extra', 'name_1', 'name_2', 'name_3']
 
 
 
@@ -634,8 +634,7 @@ main_dag = DAG(
 )
 
 
-#database_list = get_database_list(database_include_patterns)
-database_list = ['transaction_mhpcc1', 'transaction_mnthhc', 'transaction_montgo', 'transaction_mrcymd', 'transaction_mrmdu2', 'transaction_mtnhh2', 'transaction_mtnhh3', 'transaction_mtnhhc', 'transaction_mtnhsp', 'transaction_myhmcr', 'transaction_nasm31', 'transaction_nehhs1', 'transaction_ngrhsp', 'transaction_nwhhh2', 'transaction_nwmhh2', 'transaction_nwmhhh', 'transaction_nychhc', 'transaction_ohioh', 'transaction_onpnte', 'transaction_ourlad', 'transaction_pasepa', 'transaction_pathpr', 'transaction_pcchcv', 'transaction_pmcgt1', 'transaction_pmmmm1', 'transaction_pmmmm2', 'transaction_pmmmm3', 'transaction_pmmmm4', 'transaction_pmmmm5', 'transaction_pmmmm6', 'transaction_pmmmm8', 'transaction_pmmmm9', 'transaction_pmsbox', 'transaction_prariv', 'transaction_prcpth', 'transaction_precar', 'transaction_ptchsp', 'transaction_pthwys', 'transaction_queen2', 'transaction_queenc', 'transaction_ranbow', 'transaction_refhos', 'transaction_roserm', 'transaction_rosetx', 'transaction_rsshhc', 'transaction_rvrct2', 'transaction_rvrcty', 'transaction_samhsp', 'transaction_scocar', 'transaction_sesbox', 'transaction_snchhh', 'transaction_snciwa', 'transaction_sncrst', 'transaction_snrlfe', 'transaction_snropt', 'transaction_sococn', 'transaction_sococo', 'transaction_sococs', 'transaction_spinpr', 'transaction_stdvhh', 'transaction_stfrns', 'transaction_sthchh', 'transaction_sthhs1', 'transaction_sthhs2', 'transaction_sthnts', 'transaction_stjsph', 'transaction_stnhsp', 'transaction_strhhs', 'transaction_sufolk', 'transaction_tdlhsp', 'transaction_test21', 'transaction_tidehp', 'transaction_tidehs', 'transaction_tidhos', 'transaction_tndcre', 'transaction_togeth', 'transaction_toghel', 'transaction_trnhhh', 'transaction_twhach', 'transaction_uhomec', 'transaction_unmint', 'transaction_usdem2', 'transaction_usdem3']  
+database_list = ['database']
 
 
 #Each database is an independant task that will run in parallel4

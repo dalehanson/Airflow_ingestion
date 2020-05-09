@@ -25,7 +25,7 @@ concurrency_setting = 180
 interval = 60*60
 downtime_threshold = .05
 
-df = pd.read_csv('C:/Users/dale.hanson/Desktop/CellTrak/airflow_task_duration_counts_dw.csv')
+df = pd.read_csv('C:/Users/dale.hanson/Desktop/airflow_task_duration_counts_dw.csv')
 
 df['start_date'] = pd.to_datetime(df['start_date'])
 df['end_date'] = pd.to_datetime(df['end_date'])

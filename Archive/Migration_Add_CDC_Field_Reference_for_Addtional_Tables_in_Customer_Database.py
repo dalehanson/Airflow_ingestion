@@ -30,10 +30,11 @@ orchestration_country = Variable.get('orchestration_country')
 max_task_time = int(Variable.get('set_task_max_time_minutes')) #set the max runtime for a task
 max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
 
-database_include_patterns = ['trans*', 'gateway'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
+
+database_include_patterns = ['prefix*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
 
 
-include_tables = ['user', 'activity_alert_status', 'member_device_state'] 
+include_tables = ['table1', 'table2'] 
 
 
 
@@ -41,18 +42,14 @@ include_tables = ['user', 'activity_alert_status', 'member_device_state']
 #Collecting Connection attributes from Airflow connections repo
 ##################################################################
 
-sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name)
+sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name) #
 snowflake_username = sf_con_parm.login 
 snowflake_password = sf_con_parm.password 
 snowflake_account = sf_con_parm.host 
-snowflake_schema = 'A_UTILITY' 
-snowflake_warehouse = "MYSQL_TO_RAW_MIGRATION_XSMALL_1" 
-if orchestration_country.lower() in ['us', 'usa','united states','u.s.','u.s.a']:
-    snowflake_database = "US_RAW"
-if orchestration_country.lower() in ['ca', 'canada','c.a.']:
-    snowflake_database = "CA_RAW"
-if orchestration_country.lower() in ['uk', 'u.k.','united kingdom']:
-    snowflake_database = "UK_RAW"
+snowflake_stage_schema = 'A_UTILITY' 
+#snowflake_warehouse = "XSMALL" 
+snowflake_database = "sf_db"
+
 
 ########################################################################
 #Defining Utility functions

@@ -49,16 +49,16 @@ Source_System_Name = Variable.get('Source_System_Name')
 
 parent_dag_name = 'Migrate_all_databases_mysql_to_snowflake_for_prod_v4'
 
-database_include_patterns = ['trans*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
+database_include_patterns = ['prefix*'] 
 excluded_databases = Variable.get('excluded_databases')
 
-include_tables = ['activity']# ['activity', 'activity_alert', 'activity_member', 'activity_template_schedule', 'activity_filter', 'activity_template', 'activity_type', 'alert', 'config_group_filter', 'config_group', 'filter', 'filter_group', 'member', 'member_contact', 'member_location', 'activity_travel', 'activity_form_response', 'activity_type_config', 'alert_config', 'member_location_address', 'member_filter', 'member_filter_attribute', 'string_translation', 'device', 'member_device']
+include_tables = ['table']
 
 max_task_time = int(Variable.get('set_task_max_time_minutes')) #set the max runtime for a task
 max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
 
 
-migration_audit_folder_path = 'snowflake/migration_audit_files/' #audit log files for temp storage during run, will be loaded to audit table in snowflake when job is completed
+migration_audit_folder_path = 'folder/' #audit log files for temp storage during run, will be loaded to audit table in snowflake when job is completed
 
 
 
@@ -69,25 +69,19 @@ migration_audit_folder_path = 'snowflake/migration_audit_files/' #audit log file
 
 
     
-
-sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name) 
+sf_con_parm = BaseHook.get_connection(Airflow_snowflake_connection_name) #
 snowflake_username = sf_con_parm.login 
 snowflake_password = sf_con_parm.password 
 snowflake_account = sf_con_parm.host 
 snowflake_stage_schema = 'A_UTILITY' 
-if orchestration_country.lower() in ['us', 'usa','united states','u.s.','u.s.a']:
-    snowflake_database = "US_RAW"
-if orchestration_country.lower() in ['ca', 'canada','c.a.']:
-    snowflake_database = "CA_RAW"
-if orchestration_country.lower() in ['uk', 'u.k.','united kingdom']:
-    snowflake_database = "UK_RAW"
+#snowflake_warehouse = "XSMALL" 
+snowflake_database = "sf_db"
 
-mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name) #Airflow_mysql_connection_name
+mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name)
 mysql_username = mysql_con.login 
 mysql_password = mysql_con.password 
 mysql_hostname = mysql_con.host
 mysql_port = mysql_con.port
-
 
 ########################################################################
 #Defining Utility functions

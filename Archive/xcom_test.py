@@ -40,14 +40,15 @@ Source_System_Name = Variable.get('Source_System_Name')
 
 parent_dag_name = 'xcom_test'
 
-database_include_patterns = ['trans*'] #only inlcude the staging, transaction, and gateway databases, for multiple format as a list seperated by commas
 
-excluded_tables = ['web_service_request_log_part', 'web_service_request_log','web_service_request_attribute' 'event_queue_id', 'ct_config_version_cache', 'event_queue_listener_log', 'web_service_request_log_part_old', 'web_service_request_log_old','web_service_request_attribute_old' 'event_queue_id_old', 'ct_config_version_cache_old', 'event_queue_listener_log_old']  #list of tables we dont want to migrate
+database_include_patterns = ['prefix*'] 
+
+excluded_tables = ['table1', 'table2']  #list of tables we dont want to migrate
 
 max_task_time = int(Variable.get('set_task_max_time_minutes')) #set the max runtime for a task
 max_task_retries_on_error = int(Variable.get('max_task_retries_on_error'))
 
-mysql_con = BaseHook.get_connection('mysql_celltrak_1') #Airflow_mysql_connection_name
+mysql_con = BaseHook.get_connection(Airflow_mysql_connection_name) 
 mysql_username = mysql_con.login 
 mysql_password = mysql_con.password 
 mysql_hostname = mysql_con.host
@@ -176,7 +177,7 @@ end = DummyOperator(
     dag=one_dag
 )
     
-database_list = ['transaction_strhhs', 'transaction_sufolk'] # 
+database_list = ['database'] 
 
 
 #Setting dependencies, the configuration below creates a parallel task for each table  that migrates the table from mysql to s3, then from s3 to 
